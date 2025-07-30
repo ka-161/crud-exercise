@@ -5,10 +5,10 @@ const mongoose = require('mongoose');
 const TaskSchema = new mongoose.Schema({
     title: {
         type: String,
-        trin: true,
+        trim: true,
         minlength: 3,
     },
-    _taskListId: {
+    taskListId: {
         type: mongoose.Types.ObjectId,
         required: true
     },

@@ -40,10 +40,13 @@ app.use(express.json());
   * Create, Update, ReadTaskById, ReadAllTask,
   * eg. www.restapitutorial.com/lessons/httpmethods.html
   */
+
+          //  TASKLISTS
  //ROUTE - GET ALL TASKLISTS
  app.get('/tasklists', (req, res)=>{
     TaskList.find({})
     .then((lists) => {
+        console.log('Returned documents: \n', JSON.stringify(lists,null, 2));
         res.status(200).send(lists);
     })
     .catch((error)=>{
@@ -55,6 +58,7 @@ app.use(express.json());
  //ROUTE ... CREATE TASKLIST POST
 app.post('/tasklists', (req, res)=>{
     //console.log("hello i am inside post method");
+  
     console.log(req.body);
 
     let taskListObj = {'title': req.body.title};
@@ -86,19 +90,43 @@ app.post('/tasklists', (req, res)=>{
  );
 
  //ROUTE - UPDATE TASKLIST - PUT - FULL UPDATE
- /**if we only hand over one field in the body, and there are more, the reply will be none/null(?) */
+ /**if we only hand over one field in the body, and there are more, the reply will be none/null(?) 
+  * adapted code -  enforce that all required fields are provided
+ */
  app.put('/tasklists/:taskListId', (req,res) => {
-    
-    TaskList.findOneAndUpdate({/**by default not returns update but old version */
-        _id: req.params.taskListId}, 
-            {$set: req.body},
-            {new: true})//could also be findById
+    const {title} = req.body;
+
+    //check all required fields provided --> 1. Application-level check vs. Database level check in taskList.js
+    if(typeof title !== 'string' || title.trim().length < 3) {
+        return res.status(400).send({
+            error: 'Full update requires valid title, length min 3'
+        });        
+    }
+
+    TaskList.findOneAndUpdate(/**by default not returns update but old version */
+           { _id: req.params.taskListId },
+           { title: title.trim() },//trim() is a built-in method on JavaScript strings. It removes leading and trailing whitespace 
+           { new: true, runValidators: true }
+        )//could also be findById
+        /**ID from the URL - to look up a task list by its MongoDB _id
+           re.params - is an object that contains all the :named parts of the route
+            *  You’re assigning the field _id the value of taskListId from the URL.
+            * And using that object as a query filter to tell MongoDB which document to update.
+            * 
+            * tells Mongoose to apply schema validations when using findOneAndUpdate() (or similar methods). 
+            * By default, Mongoose does not apply validators when you update a document using findOneAndUpdate() 
+            * or findByIdAndUpdate() unless you explicitly set this flag.*/
+
+        
         .then((taskList)=>{
-            res.status(200).send(taskList)
+        if(!taskList) {
+            return res.status(404).send({error: 'taskList not found'});
+        }    
+        res.status(200).send(taskList);
         })
-        .catch((error)=>{
-            console.log(error);
-            res.status(500);
+        .catch((error) => {
+            console.error(error);
+            res.status(500).send({ error: 'Server error.'});
         });
     });
  
@@ -147,12 +175,157 @@ app.delete('/tasklists/:taskListId', (req,res) => {
     }); 
 
 
-//ROUTE - GET ALL TASKS
-//ROUTE - GET TASK
-//ROUTE - POST TASK
+                //TASK - SHOULD ALWAYS BELONG TO TASKLIST
+/**http://localhost:3000/tasklists/:tasklistid/tasks/:task */
+
+//ROUTE - GET ALL TASKS FOR ONE TASKLIST
+app.get('/tasklists/:tasklistid/tasks', (req,res)=>{
+    Task.find({taskListId: req.params.tasklistid})
+    .then((tasks)=>{
+            res.status(200).send(tasks)
+        })
+        .catch((error)=>{
+            console.log(error);
+            res.status(500);
+        
+} );
+});
+
+
+//ROUTE - GET ONE TASK BY TASKID
+/** con leave out tasks - readabiöity, scalability sth sth*/
+app.get('/tasklists/:tasklistId/tasks/:taskId', (req, res) => {
+   const { tasklistId, taskId} = req.params;
+
+/**chercks if tasklistid is valid */
+   if(!mongoose.Types.ObjectId.isValid(tasklistId)) {
+    return res.status(400).send({error: 'Invalid task list ID'});
+   }
+
+/**checks if task id is valid */
+   if(!mongoose.Types.ObjectId.isValid(taskId)) {
+    return res.status(400).send({error: 'Invalid task Id'});
+   }
+
+   
+Task.findOne({_id: taskId, taskListId:tasklistId})
+    .then((task)=>{
+
+        if(!task)
+        {
+            res.status(404).send({error: 'task not found'});
+        }
+        res.status(200).send(task);
+    })
+    .catch((error)=>{
+        console.log(error);
+        res.status(500).send({error:'soemthing went wrong here'})
+    });
+});
+
+
+//ROUTE - GET ONE TASK BY TITLE
+/**works like this: http://localhost:3000/tasklists/6885027f6248241c667e878f/tasks/vegetqables */
+app.get('/tasklists/:tasklistId/tasks/:title', (req, res) => {
+    Task.find({title: req.params.title})
+    .then((task)=>{
+        res.status(200).send(task)
+    })
+    .catch((error)=>{
+        console.log(error);
+        res.status(500);
+    });
+});
+
+//ROUTE - POST TASK INSIDE ONE TASKLIST
+app.post('/tasklists/:tasklistId/tasks', (req,res) =>{
+    console.log(req.body);
+
+    let taskObj = { 'title': req.body.title, 'taskListId' : req.params.tasklistId};
+    Task(taskObj).save()
+    .then((taskList)=> {
+        res.status(201).send(taskList);
+    })
+    .catch((error) => {
+        console.log(error);
+        res.status(500);
+    })
+})
+
 //ROUTE - PUT TASK
+ app.put('/tasklists/:taskListId/tasks/:taskId', (req,res) => {
+    const {title} = req.body;
+
+    //check all required fields provided --> 1. Application-level check vs. Database level check in taskList.js
+    if(typeof title !== 'string' || title.trim().length < 3) {
+        return res.status(400).send({
+            error: 'Full update requires valid title, length min 3'
+        });        
+    }
+
+    Task.findOneAndUpdate(/**by default not returns update but old version */
+           { _id: req.params.taskId },
+           { title: title.trim() }, 
+           { new: true, runValidators: true }
+        )
+        
+        .then((task)=>{
+        if(!task) {
+            return res.status(404).send({error: 'task not found'});
+        }    
+        res.status(200).send(task);
+        })
+        .catch((error) => {
+            console.error(error);
+            res.status(500).send({ error: 'Server error.'});
+        });
+    });
+
+
+
 //ROUTE - PATCH TASK
+  app.patch('/tasklists/:taskListId/tasks/:taskId', (req,res) => {
+    const taskId = req.params.taskId;
+            
+    Task.findByIdAndUpdate(
+        taskId, 
+        {$set: req.body},
+        {new: true}
+    )
+    .then((updatedTask)=>{
+        if(!updatedTask)
+        {
+            return res.status(404).send({ message : 'Task not found'});
+        }
+            res.status(200).send(updatedTask);
+        })
+        .catch((error)=>{
+            console.log(error);
+            res.status(500).send({ error : 'An error occured while updating the Task'});
+        });
+    }); 
+
 //ROUTE - DELETE TASK
+app.delete('/tasklists/:taskListId/tasks/:taskId', (req,res) => {
+    const taskId = req.params.taskId;
+            
+    Task.findByIdAndDelete(
+        taskId, 
+        {new: true}//added because findby... returns notupdated, unless set to true
+    )
+    .then((updatedTask)=>{
+        if(!updatedTask)
+        {
+            return res.status(404).send({ message : 'Task not found'});
+        }
+            res.status(201).send(updatedTask);
+        })
+        .catch((error)=>{
+            console.log(error);
+            res.status(500).send({ error : 'An error occured while updating the Task'});
+        });
+    }); 
+
 
 
 
@@ -168,4 +341,3 @@ app.listen(3000, function(){
 app.listen(3000, ()=>{
     console.log("Server started on port 3000 - YAY")})
 
- 

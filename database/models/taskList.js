@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 const TaskListSchema = new mongoose.Schema({
     title: {
         type: String,
-        trin: true,
+        required: true,
+        trim: true,
         minlength: 3,
     }
 });
