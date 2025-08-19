@@ -1,0 +1,15 @@
+        ◦ task-manager-course -->  website-builder-app
+
+        checklist with nested tasks
+        interactive progress guide
+
+
+        check list notes
+
+        ChecklistTask -> task -> nestedTask
+
+        Idea->developConcept->developSchemas
+        Backend->chooseTools->chooseLanguage->->install->setUp->test
+        ->chooseMiddleware->install->setUp->test
+        write routes
+        

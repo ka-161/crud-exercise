@@ -153,25 +153,26 @@ app.post('/tasklists', (req, res)=>{
         });
     }); 
 
-//ROUTE - DELETE TASKLIST
-app.delete('/tasklists/:taskListId', (req,res) => {
-    const taskListId = req.params.taskListId;
+//ROUTE - DELETE TASKLIST BY ID
+app.delete('/tasklists/:tasklistId', (req,res) => {
             
-    TaskList.findByIdAndDelete(//findOneAndUpdate also possible
-        taskListId, 
-        {new: true}//added because findby... returns notupdated, unless set to true
-    )
-    .then((updatedTaskList)=>{
-        if(!updatedTaskList)
-        {
-            return res.status(404).send({ message : 'TaskList not found'});
-        }
-            res.status(201).send(updatedTaskList);
-        })
+    //delete cascading tasks
+    const deleteAllContainingTasks = (taskList) => {
+    Task.deleteMany({taskListId: req.params.tasklistId})
+    .then(()=>{return taskList})
+    .catch((error)=>{
+        console.log(error) });
+    };
+
+    const responseTaskList = TaskList.findByIdAndDelete(req.params.tasklistId)
+    .then((taskList)=>{
+        deleteAllContainingTasks(taskList);
+    })
         .catch((error)=>{
-            console.log(error);
-            res.status(500).send({ error : 'An error occured while updating the TaskList'});
+            console.log(error)
         });
+               res.status(200).send(responseTaskList);
+   
     }); 
 
 
@@ -227,7 +228,7 @@ Task.findOne({_id: taskId, taskListId:tasklistId})
 //ROUTE - GET ONE TASK BY TITLE
 /**works like this: http://localhost:3000/tasklists/6885027f6248241c667e878f/tasks/vegetqables */
 app.get('/tasklists/:tasklistId/tasks/:title', (req, res) => {
-    Task.find({title: req.params.title})
+    Task.findOne({title: req.params.title})
     .then((task)=>{
         res.status(200).send(task)
     })
@@ -290,7 +291,7 @@ app.post('/tasklists/:tasklistId/tasks', (req,res) =>{
     Task.findByIdAndUpdate(
         taskId, 
         {$set: req.body},
-        {new: true}
+        {new: true, runValidators: true}
     )
     .then((updatedTask)=>{
         if(!updatedTask)
