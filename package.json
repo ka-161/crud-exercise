@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "udemy course mean strack",
   "main": "index.js",
-  "scripts": { 
+  "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon app.js"
   },
@@ -19,10 +19,13 @@
   },
   "homepage": "https://github.com/ka-161/crud-exercise#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "mongoose": "^8.16.5"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
     "nodemon": "^3.1.10"
   }
 }

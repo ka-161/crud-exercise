@@ -1,5 +1,6 @@
 const express = require('express');
 const app=express();
+const cors = require('cors');
 
 //IMPORT DB
 const mongoose=require('./database/mongoose');
@@ -12,10 +13,10 @@ const Task=require("./database/models/task");
 /**backend cvan request, but frontend (e.g. port 4200) will be blocked --> allow 
  * frontend request etc by othermiddleware: 
  * actual call: app.use(cors()); but internally does this */
-app.use((request,response,next)=>{
+/**app.use((request,response,next)=>{
 
     //WEBSITE ALLOWED TO CONNECT
-    /**here use port of frontend, for any '*'   */
+    /**here use port of frontend, for any '*'   
     response.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
 
     //REQUEST METHODS ALLOWED
@@ -26,7 +27,30 @@ app.use((request,response,next)=>{
 
     //PASS TO NEXT LAYER OF MIDDLEWARE
     next();
+});
 
+SOMEHOW ADAPTED ABOVE ONE OUTSIDE COURSE TO THE FOLOWING
+*/
+
+/***funciona para solicitudes simples (GET, POST), pero falla con PATCH, PUT, DELETE, porque no maneja las solicitudes OPTIONS (preflight) correctamente. */
+app.use(function(req,res,next) {
+
+    //WEBSITE ALLOWED TO CONNECT
+    /**here use port of frontend, for any '*'   */
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    //REQUEST METHODS ALLOWED
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE, OPTIONS');
+
+    //REQUEST HEADERS ALLOWED
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+    if(req.method === 'OPTIONS'){
+        return res.sendStatus(200);
+    }
+
+    //PASS TO NEXT LAYER OF MIDDLEWARE
+    next();
 });
 
 //TRANSLATES REQUEST & RESPONSE FROM/TO BROWSER - JSON - EXAMPLE MIDDLEWARE
@@ -132,29 +156,20 @@ app.post('/tasklists', (req, res)=>{
  
 
  //ROUTE - UPDATE TASKLIST - PATCH - PARTIAL UPDATE
-  app.patch('/tasklists/:taskListId', (req,res) => {
-    const taskListId = req.params.taskListId;
-            
-    TaskList.findByIdAndUpdate(//findOneAndUpdate also possible
-        taskListId, 
-        {$set: req.body},
-        {new: true}
-    )
-    .then((updatedTaskList)=>{
-        if(!updatedTaskList)
-        {
-            return res.status(404).send({ message : 'TaskList not found'});
-        }
-            res.status(200).send(updatedTaskList);
-        })
-        .catch((error)=>{
-            console.log(error);
-            res.status(500).send({ error : 'An error occured while updating the TaskList'});
-        });
-    }); 
+  app.patch('/tasklists/:taskListId', (req,res) => 
+    {
+    Task.findOneAndUpdate(
+        { taskListId: req.params.tasklistId, _id: req.params.taskId})
+        .then((task) => 
+            {
+            res.status(200).send(task)
+            })
+        .catch((error) => { console.log(error)});
+    });
 
 //ROUTE - DELETE TASKLIST BY ID
-app.delete('/tasklists/:tasklistId', (req,res) => {
+app.delete('/tasklists/:tasklistId', (req,res) => 
+    {
             
     //delete cascading tasks
     const deleteAllContainingTasks = (taskList) => {
